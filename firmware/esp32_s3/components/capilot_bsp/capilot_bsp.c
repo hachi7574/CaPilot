@@ -329,11 +329,20 @@ esp_err_t capilot_bsp_touch_init(esp_lcd_touch_handle_t *ret_touch)
     };
 
     esp_lcd_panel_io_handle_t tp_io = NULL;
-    esp_lcd_panel_io_i2c_config_t tp_io_config =
-        ESP_LCD_TOUCH_IO_I2C_FT5x06_CONFIG();
+    /* 手动构造 io 配置：ESP_LCD_TOUCH_IO_I2C_FT5x06_CONFIG() 宏会带入
+       scl_speed_hz 字段，而 v5.5.4 legacy I2C 驱动 (esp_lcd_new_panel_io_i2c_v1)
+       不接受该字段，会返回 ESP_ERR_INVALID_ARG（"scl_speed_hz is not need to set"）。
+       速度由 capilot_bsp_i2c_init() 的 master.clk_speed 决定，这里不能重复设置。*/
+    esp_lcd_panel_io_i2c_config_t tp_io_config = {
+        .dev_addr = ESP_LCD_TOUCH_IO_I2C_FT5x06_ADDRESS,
+        .control_phase_bytes = 1,
+        .dc_bit_offset = 0,
+        .lcd_cmd_bits = 8,
+        .flags = {
+            .disable_control_phase = 1,
+        },
+    };
 
-    /* v5.5.4 legacy I2C 驱动下不要在 panel_io 配置中设置 scl_speed_hz,
-       速度由 bsp_i2c_init 的 master.clk_speed 决定 */
     ESP_RETURN_ON_ERROR(
         esp_lcd_new_panel_io_i2c((esp_lcd_i2c_bus_handle_t)s_i2c_port,
                                   &tp_io_config, &tp_io),

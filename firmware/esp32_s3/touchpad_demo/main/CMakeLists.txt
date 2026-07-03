@@ -1,0 +1,19 @@
+# main 组件 CMakeLists - Touchpad Demo (USB HID Mouse)
+idf_component_register(
+    SRCS
+        "main.c"
+        "app_ui.c"
+    INCLUDE_DIRS
+        "."
+    REQUIRES
+        "capilot_bsp"
+        "capilot_usb_hid_mouse"
+        "freertos"
+        "nvs_flash"
+        "esp_driver_gpio"
+        "esp_timer"
+        "lvgl"
+        "esp_lvgl_port"
+        "esp_lcd_touch"
+        "esp_lcd_touch_ft5x06"
+)

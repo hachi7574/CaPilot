@@ -1,0 +1,15 @@
+Hardware/
+
+# Build outputs
+build/
+managed_components/
+sdkconfig
+*.bin
+*.elf
+
+# IDE / tools
+.claude/
+.workbuddy/
+.codebuddy/
+.agents/
+skills-lock.json

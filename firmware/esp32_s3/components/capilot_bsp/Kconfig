@@ -1,0 +1,32 @@
+# capilot_bsp Kconfig
+menu "CaPilot BSP Configuration"
+
+    config CAPILOT_BSP_TOUCH_ENABLE
+        bool "Enable touch screen (FT6336)"
+        default y
+        help
+            Enable capacitive touch screen driver (FT6336 via I2C).
+            Disable to save memory when touch is not needed.
+
+    config CAPILOT_BSP_LVGL_ENABLE
+        bool "Enable LVGL graphics library"
+        default y
+        help
+            Enable LVGL (LittlevGL) with LCD + touch integration.
+            Requires CAPILOT_BSP_TOUCH_ENABLE.
+
+    config CAPILOT_BSP_LCD_SPI_FREQ
+        int "LCD SPI clock frequency (Hz)"
+        default 80000000
+        range 1000000 80000000
+        help
+            SPI clock for LCD ST7789. Max 80MHz on ESP32-S3.
+
+    config CAPILOT_BSP_LCD_BACKLIGHT_PWM_FREQ
+        int "Backlight PWM frequency (Hz)"
+        default 5000
+        range 1000 100000
+        help
+            PWM frequency for LCD backlight control.
+
+endmenu

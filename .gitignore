@@ -6,10 +6,12 @@ managed_components/
 sdkconfig
 *.bin
 *.elf
+logs/
 
 # IDE / tools
 .claude/
 .workbuddy/
 .codebuddy/
 .agents/
+.vscode/
 skills-lock.json

@@ -1,0 +1,19 @@
+dependencies:
+  capilot_bsp:
+    dependencies:
+    - name: idf
+      version: ^5.0
+    source:
+      path: B:\CaPilot\Firmware\Components\capilot_bsp
+      type: local
+    version: '*'
+  idf:
+    source:
+      type: idf
+    version: 5.5.4
+direct_dependencies:
+- capilot_bsp
+- idf
+manifest_hash: b91cf16bddbd665a4793ebc49c20c47b3c10c74e943fea08d237e61641de66e4
+target: esp32s3
+version: 2.0.0

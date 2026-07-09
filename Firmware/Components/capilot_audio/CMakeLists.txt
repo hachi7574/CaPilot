@@ -1,0 +1,14 @@
+idf_component_register(
+    SRCS
+        "capilot_audio.c"
+        "capilot_audio_capture.c"
+        "capilot_audio_playback.c"
+        "capilot_audio_events.c"
+    INCLUDE_DIRS
+        "."
+        "include"
+    REQUIRES
+        "capilot_bsp"
+        "driver"
+        "esp_timer"
+)

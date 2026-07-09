@@ -50,4 +50,4 @@ bool connected = tud_mounted();
 
 ## 参考组件
 
-`B:/CaPilot/firmware/esp32_s3/keyboard_demo/components/capilot_usb_hid_keyboard/` 是已验证可用的实现，可直接参考。
+`{{PROJECT_ROOT}}/Firmware/esp32_s3/keyboard_demo/components/capilot_usb_hid_keyboard/` 是已验证可用的实现，可直接参考。

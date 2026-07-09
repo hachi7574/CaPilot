@@ -1,5 +1,0 @@
-## IDF Component Manager Manifest File
-dependencies:
-  capilot_bsp:
-    version: "*"
-    override_path: "../../components/capilot_bsp"

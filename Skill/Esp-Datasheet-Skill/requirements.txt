@@ -1,0 +1,9 @@
+# Esp-Datasheet-Skill 依赖
+# 安装到 managed Python venv:
+#   pip install -r requirements.txt
+
+# PDF → Markdown 转换（主引擎，含 torch + surya 依赖）
+marker-pdf>=1.0.0
+
+# raw-pdf 模式（PDF 直接读取/搜索/表格提取）
+pymupdf>=1.24.0

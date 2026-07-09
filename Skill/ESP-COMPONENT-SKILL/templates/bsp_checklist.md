@@ -1,6 +1,6 @@
 # BSP 精简驱动裁剪要点
 
-从立创实战派 14-handheld 例程的 `esp32_s3_szp.c` 裁剪 BSP 时：
+从立创实战派 handheld 例程的 `esp32_s3_szp.c` 裁剪 BSP 时：
 
 ## 保留
 
@@ -29,4 +29,4 @@
 
 ## 参考
 
-`B:/CaPilot/firmware/esp32_s3/keyboard_demo/main/bsp.c` 是已验证的精简版本。
+`{{PROJECT_ROOT}}/Firmware/esp32_s3/keyboard_demo/main/bsp.c` 是已验证的精简版本。

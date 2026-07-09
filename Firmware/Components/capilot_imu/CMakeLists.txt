@@ -1,0 +1,10 @@
+idf_component_register(
+    SRCS
+        "capilot_imu.c"
+        "capilot_imu_qmi8658.c"
+    INCLUDE_DIRS
+        "."
+        "include"
+    REQUIRES
+        "capilot_bsp"
+)

@@ -2,9 +2,9 @@
 
 > 仅当必须用无线时才考虑 BLE HID。桌面外设首选 USB HID。
 
-## 从立创实战派 14-handheld 例程剥离
+## 从立创实战派 handheld 例程剥离
 
-源码位置：`A:\ESPIDF\Espressif5\frameworks\esp-idf-v5.5.4\examples\peripherals\lcd_touch\esp32_s3_lcd_touch\14-handheld\`
+源码位置：`A:\ESPIDF\Espressif5\frameworks\esp-idf-v5.5.4\examples\peripherals\lcd_touch\esp32_s3_lcd_touch\handheld\`
 
 ### 需要复制的文件
 

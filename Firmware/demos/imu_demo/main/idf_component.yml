@@ -1,0 +1,8 @@
+dependencies:
+  capilot_imu:
+    version: "*"
+    override_path: "../../../components/capilot_imu"
+  capilot_bsp:
+    version: "*"
+    override_path: "../../../components/capilot_bsp"
+  idf: "^5.0"

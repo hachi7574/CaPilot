@@ -1,0 +1,13 @@
+dependencies:
+  idf: "^5.0"
+  capilot_audio:
+    version: "*"
+    override_path: "../../../components/capilot_audio"
+  capilot_bsp:
+    version: "*"
+    override_path: "../../../components/capilot_bsp"
+  capilot_usb_headset:
+    version: "*"
+    override_path: "../../../components/capilot_usb_headset"
+  espressif/esp_tinyusb:
+    version: "^2.0.0"

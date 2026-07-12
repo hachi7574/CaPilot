@@ -1,0 +1,28 @@
+dependencies:
+  capilot_audio:
+    dependencies:
+    - name: idf
+      version: ^5.0
+    source:
+      path: /home/hachi/Project/CaPilot/Firmware/components/capilot_audio
+      type: local
+    version: '*'
+  capilot_bsp:
+    dependencies:
+    - name: idf
+      version: ^5.0
+    source:
+      path: /home/hachi/Project/CaPilot/Firmware/components/capilot_bsp
+      type: local
+    version: '*'
+  idf:
+    source:
+      type: idf
+    version: 5.5.4
+direct_dependencies:
+- capilot_audio
+- capilot_bsp
+- idf
+manifest_hash: 5c19531d0a50ade37e5851df3aba695fc43836962f0207430501647e1b9d3965
+target: esp32s3
+version: 2.0.0

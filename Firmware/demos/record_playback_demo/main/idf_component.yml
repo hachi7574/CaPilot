@@ -1,0 +1,8 @@
+dependencies:
+  capilot_audio:
+    version: "*"
+    override_path: "../../../components/capilot_audio"
+  capilot_bsp:
+    version: "*"
+    override_path: "../../../components/capilot_bsp"
+  idf: "^5.0"

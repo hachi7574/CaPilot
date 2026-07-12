@@ -33,30 +33,6 @@ dependencies:
       registry_url: https://components.espressif.com
       type: service
     version: 1.0.3
-  espressif/esp-dsp:
-    component_hash: 42dce32d46ac93dc11f60d368e29a830e9661c7345d794b8a45c343479cae636
-    dependencies:
-    - name: idf
-      require: private
-      version: '>=4.2'
-    source:
-      registry_url: https://components.espressif.com
-      type: service
-    version: 1.7.0
-  espressif/esp-sr:
-    component_hash: 04b360c8eb79e02c204d9a2c3683f7bc20077752a01e51f636dd376db0ef1e82
-    dependencies:
-    - name: idf
-      require: private
-      version: '>=4.4'
-    - name: espressif/esp-dsp
-      registry_url: https://components.espressif.com
-      require: private
-      version: ^1.2.1
-    source:
-      registry_url: https://components.espressif.com/
-      type: service
-    version: 1.6.1
   espressif/esp32-camera:
     component_hash: f0a608b109935a5389221eee5090ec61f51b0df1a0749531fe59d33aaf263233
     dependencies:
@@ -132,7 +108,7 @@ dependencies:
   idf:
     source:
       type: idf
-    version: 5.4.3
+    version: 5.5.4
   lvgl/lvgl:
     component_hash: 948bff879a345149b83065535bbc4a026ce9f47498a22881e432a264b9098015
     dependencies: []
@@ -143,12 +119,11 @@ dependencies:
 direct_dependencies:
 - chmorgan/esp-audio-player
 - chmorgan/esp-file-iterator
-- espressif/esp-sr
 - espressif/esp32-camera
 - espressif/esp_codec_dev
 - espressif/esp_lcd_touch_ft5x06
 - espressif/esp_lvgl_port
 - lvgl/lvgl
-manifest_hash: 42ec67df04ef6b6b0df5f734780810178816ed734c175f950c32bf5afaac99fe
+manifest_hash: 4af4592b7580e05474cc3fa932aea4ab46040aa6bac0edaa41815687e2ea967a
 target: esp32s3
 version: 2.0.0

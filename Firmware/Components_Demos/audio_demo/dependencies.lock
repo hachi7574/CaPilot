@@ -4,16 +4,53 @@ dependencies:
     - name: idf
       version: ^5.0
     source:
-      path: B:\CaPilot\Firmware\esp32_s3\components\capilot_bsp
+      path: /run/media/hachi/Porject/CaPilot/Firmware/Components/capilot_bsp
       type: local
     version: '*'
+  espressif/esp_tinyusb:
+    component_hash: 9a73a76a6bc17907f6e523342ff6b1e440023e8aac2c11f4691212106ec24e66
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.0'
+    - name: espressif/tinyusb
+      registry_url: https://components.espressif.com
+      require: public
+      version: '>=0.17.0~2'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    targets:
+    - esp32s2
+    - esp32s3
+    - esp32p4
+    - esp32h4
+    - esp32s31
+    version: 2.2.1
+  espressif/tinyusb:
+    component_hash: a40b7f67df6ac254a4afd96c6401cc56f2059ae747d6d7e66b568bca53ad0edc
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    targets:
+    - esp32s2
+    - esp32s3
+    - esp32p4
+    - esp32h4
+    - esp32s31
+    version: 0.19.0~3
   idf:
     source:
       type: idf
     version: 5.5.4
 direct_dependencies:
 - capilot_bsp
+- espressif/esp_tinyusb
 - idf
-manifest_hash: 22644af99fbed9e855e27c8560ae98e73b55b7044c27489cb2b6eebe130df4a7
+manifest_hash: 55150d5a48c6359d7ada105c24706e9df058c65209c173096f7d43db258106c8
 target: esp32s3
 version: 2.0.0

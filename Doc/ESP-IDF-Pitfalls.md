@@ -431,3 +431,144 @@ Set-Location "$appPath\build"
 - 新增坑点请追加到本文件末尾，保持 `## N. 标题 / 症状 / 原因 / 修复` 结构
 - 坑点通用化后，可考虑贡献到 ESP-IDF 官方 issue
 - 本文件是经验沉淀，不是临时笔记，请勿删除
+
+---
+
+## 25. 固件较大时烧录耗时长，串口看起来像“堵塞”
+
+**现象：** 固件接近 8MB 时，使用 esptool 烧录需要较长时间。烧录过程中可能长时间没有新输出，或者出现串口写入超时、端口无响应的现象。
+
+**原因：**
+1. 固件体积较大，串口传输和 Flash 写入本身需要更长时间。
+2. 烧录工具与串口监控工具同时占用同一个 COM 口时，会放大超时和阻塞现象。
+3. 自动复位或 USB-UART 芯片在烧录期间重新枚举，可能造成短暂的端口状态变化。
+
+**实际验证结论：**
+
+本项目固件约 7.5MB。此前烧录过程长时间无输出，看起来像串口堵塞；在完成烧录后，设备实际启动并验证了功能，说明该现象不一定表示固件或应用运行失败。
+
+**处理建议：**
+1. 烧录前关闭所有串口监视器、IDE 串口窗口和其他可能占用 COM 口的程序。
+2. 固件较大时等待更长时间，不要仅因短时间无输出就立即终止 esptool。
+3. 先使用 `esptool chip_id` 确认正确的 COM 口，再执行烧录。
+4. 应用、Bootloader、分区表和 SPIFFS 资源应按照 `partitions.csv` 的实际偏移地址烧录。
+5. 烧录成功后再启动串口监控，分开判断“烧录传输问题”和“固件运行问题”。
+---
+
+## 26. ESP32-S3 模拟 USB 音频设备：Windows 驱动正常不等于真的有声音
+
+**症状：**
+
+开发 `usb_headset_demo` 时，设备插入 Windows 后经历过几类问题：
+
+1. 设备出现在“其他设备”中，显示驱动程序错误。
+2. Windows 设备事件里 `USB Composite Device` 或 `USB Audio Device` 报 `问题: 0xA`。
+3. 改到能正常枚举后，Windows 设置里出现“耳机 / 麦克风”，但没有声音输入输出。
+4. 播放流已经到 ESP32，日志显示 `usb_rx` 和 `i2s_tx` 都在增长，但扬声器仍然无声。
+5. Windows 音量滑块可以拖动，但实际音量大小不变化。
+
+**原因：**
+
+USB Audio 链路很长，任何一层“看起来成功”都不代表整条链路成功：
+
+1. **ESP32-S3 原生 USB 是 Full-Speed。**  
+   UAC2 在 Windows 上容易绑定到 `usbaudio2.inf` 后失败，尤其是描述符/速率/同步类型稍有不匹配时。Full-Speed 下优先实现 UAC1 更稳。
+
+2. **TinyUSB 的 Audio 设备栈默认更偏 UAC2。**  
+   若手写 UAC1 描述符，需要确认 TinyUSB 是否接受 `bInterfaceProtocol = 0`，并且解析 UAC1 AC Header 的 `wTotalLength` 偏移是否正确。UAC1 AC Header 与 UAC2 结构不同，读错偏移会导致 TinyUSB 跳过 AS 接口描述符，Windows 后续 `SET_INTERFACE alt=1` 行为异常。
+
+3. **Windows 枚举成功只证明 USB 描述符基本可用。**  
+   还需要看串口日志中是否出现：
+   - `audio set interface: itf=1 alt=1`
+   - `audio ep set sample rate: ep=0x01 rate=48000`
+   - 播放时 `usb_rx` 约等于 `192000 B/s`（48 kHz × 16-bit × stereo）
+   - 播放时 `i2s_tx` 同步增长
+
+4. **I2S full-duplex 的 TX 物理引脚必须在共享通道中正确绑定。**  
+   ES7210 和 ES8311 共用 I2S0 时，如果 RX 侧先创建 full-duplex channel，却只配置 `mclk/bclk/ws/din`，后续 TX 侧再“只配置 dout”可能出现软件写入成功、物理 `DOUT=GPIO45` 未正确输出的情况。应在 full-duplex STD GPIO 配置里同时包含：
+   ```c
+   .mclk = GPIO_NUM_38,
+   .bclk = GPIO_NUM_14,
+   .ws   = GPIO_NUM_13,
+   .dout = GPIO_NUM_45,  // ES8311 DIN
+   .din  = GPIO_NUM_12,  // ES7210 DOUT
+   ```
+
+5. **ES8311 需要完整的 DAC start / unmute / reference 初始化。**  
+   仅能 I2C 探测到 ES8311、I2S write 成功，不代表模拟输出链路已打开。需要参考乐鑫 ES8311 驱动补齐关键寄存器，例如：
+   - `ES8311_DAC_REG31 = 0x00`：DAC unmute
+   - `ES8311_DAC_REG32`：DAC volume
+   - `ES8311_GPIO_REG44 = 0x58`：DAC reference
+   - `ES8311_GP_REG45 = 0x00`
+   - `ES8311_SYSTEM_REG13 = 0x10`
+   - `ES8311_SYSTEM_REG12 = 0x00`
+   - `ES8311_ADC_REG15 = 0x40`
+
+6. **UAC 音量控制请求不会自动改变声音大小。**  
+   Windows 发来的 `MUTE / VOLUME` 只是 USB class control request。TinyUSB 回调里如果只保存 `s_mute / s_volume`，但不把它应用到 PCM 或 codec 寄存器，Windows 音量滑块就只是“UI 上变了”，实际输出不会变。
+
+**修复：**
+
+1. **优先用 UAC1 + HID Composite。**
+   - PID 改新值，避免 Windows 缓存旧的失败枚举结果。
+   - UAC1 Audio Control interface 使用 `bInterfaceProtocol = 0`。
+   - Windows 应绑定到 `wdma_usb.inf / usbaudio`，而不是继续卡在 `usbaudio2.inf` 错误状态。
+
+2. **对 TinyUSB UAC1 兼容点做补丁或封装。**
+   - 允许 Audio interface protocol 为 0。
+   - 解析 AC Header `wTotalLength` 时根据 `bcdADC == 0x0100` 使用 UAC1 偏移。
+   - 重点验证 Windows 是否真的触发 `SET_INTERFACE alt=1`。
+
+3. **把 USB 收发统计写进 demo 日志。**
+   建议每秒打印：
+   ```text
+   playback stats: alt=%u usb_rx=%u i2s_tx=%u peak=%d mute=%u vol_db_q8_8=%d gain_q15=%u
+   capture stats:  alt=%u i2s_rx=%u usb_tx=%u usb_drop=%u peak=%d
+   ```
+   这能快速区分：
+   - USB 主机没有打开音频流：`alt=0, usb_rx=0`
+   - USB 流正常但 I2S 写失败：`usb_rx>0, i2s_tx=0`
+   - 数据链路正常但模拟无声：`usb_rx≈192000, i2s_tx≈192000, peak>0`
+
+4. **I2S full-duplex 初始化一次性绑定 RX/TX 所需 GPIO。**
+   不要假设后续 TX channel init 只写 `.dout` 一定能补上物理输出脚。共享 I2S0 时，让创建 full-duplex 的那一侧配置完整 GPIO matrix。
+
+5. **ES8311 初始化贴近官方 driver 的 open/start 流程。**
+   如果 I2S write 成功但外放无声，优先检查：
+   - PA_EN 是否通过 PCA9557 置高
+   - ES8311 DAC 是否 unmute
+   - ES8311 DAC volume 是否非 0
+   - GPIO44/GP45/reference/start 相关寄存器是否已写
+   - MCLK/BCLK/WS/DOUT 引脚是否与官方例程一致
+
+6. **Windows 音量要显式映射到输出路径。**
+   当前项目采用数字增益方式：
+   - USB headset 组件保存 UAC `VOLUME`（Q8.8 dB）和 `MUTE`
+   - demo 播放任务读取 `gain_q15`
+   - 写入 I2S 前对 PCM 做缩放
+   - 静音时增益为 0
+
+   这种方式比直接让 USB 组件依赖 ES8311 更干净：USB 组件只负责协议状态，audio 组件只负责音频硬件，demo/application 层负责把二者连接起来。
+
+**验证方法：**
+
+1. Windows 设备管理器中应看到正常的音频端点：
+   - `耳机 (CaPilot USB Headset)`
+   - `麦克风 (CaPilot USB Headset)`
+
+2. 播放 48 kHz / 16-bit / stereo 测试音时，串口应看到：
+   ```text
+   audio set interface: itf=1 alt=1
+   audio ep set sample rate: ep=0x01 rate=48000
+   playback stats: alt=1 usb_rx=192000 i2s_tx=192000 peak=...
+   ```
+
+3. 调 Windows 音量时，串口应看到：
+   ```text
+   speaker volume: channel=0 db_q8_8=... gain_q15=...
+   ```
+   例如本项目实测：
+   - 25% 音量：`gain_q15=3488`，播放峰值约 `1278`
+   - 100% 音量：`gain_q15=32767`，播放峰值约 `12001`
+
+4. 如果 `usb_rx/i2s_tx` 正常但人耳听不到，下一步不要再优先改 USB 描述符，应检查 ES8311 模拟输出、PA_EN、喇叭连接和 codec 寄存器。

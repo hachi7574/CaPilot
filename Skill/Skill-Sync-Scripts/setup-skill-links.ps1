@@ -6,7 +6,7 @@
 #   powershell -ExecutionPolicy Bypass -File Skill\Skill-Sync-Scripts\setup-skill-links.ps1
 #   powershell -ExecutionPolicy Bypass -File Skill\Skill-Sync-Scripts\setup-skill-links.ps1 -Clean
 #
-# Principle: Use Python subprocess to create Junctions (mklink /J)
+# Principle: use Junctions where supported; Codex receives real, marked copies
 # ============================================================
 
 param([switch]$Clean)
@@ -26,6 +26,12 @@ $AgentDirs = @(
     ".agents\skills",
     ".cursor\skills",
     ".windsurf\skills"
+)
+
+# Codex scans project skills as normal directories in some environments and
+# may skip Windows Junctions. Keep Codex skills as real copies.
+$CopyAgentDirs = @(
+    ".agents\skills"
 )
 
 # --- Find Python ---
@@ -64,6 +70,16 @@ function Remove-Junction {
     return $LASTEXITCODE -eq 0
 }
 
+function Test-SyncedCopy {
+    param([string]$Path)
+    return Test-Path -LiteralPath (Join-Path $Path ".skill-sync-copy") -PathType Leaf
+}
+
+function Remove-SyncedCopy {
+    param([string]$Path)
+    Remove-Item -LiteralPath $Path -Recurse -Force
+}
+
 # --- Clean mode ---
 if ($Clean) {
     Write-Host "=== Clean all agent skill links ===" -ForegroundColor Yellow
@@ -73,11 +89,14 @@ if ($Clean) {
 
         Get-ChildItem $fullDir -Force | ForEach-Object {
             $item = $_
-            # Check if it's a Junction or SymbolicLink
+            # Remove only links and copies owned by this synchronizer.
             if ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
                 if (Remove-Junction $item.FullName) {
                     Write-Host "  [REMOVED] $($item.Name)" -ForegroundColor Green
                 }
+            } elseif ($item.PSIsContainer -and (Test-SyncedCopy $item.FullName)) {
+                Remove-SyncedCopy $item.FullName
+                Write-Host "  [REMOVED COPY] $($item.Name)" -ForegroundColor Green
             }
         }
     }
@@ -124,13 +143,17 @@ foreach ($agentDir in $AgentDirs) {
         $target = Join-Path $SkillSource $skillName
         $linkPath = Join-Path $fullDir $skillName
 
-        # Remove existing link/junction
+        $isCopyTarget = $CopyAgentDirs -contains $agentDir
+
+        # Remove the existing managed target. Preserve unmanaged directories.
         if (Test-Path $linkPath) {
             $item = Get-Item $linkPath -Force
             if ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
                 Remove-Junction $linkPath | Out-Null
+            } elseif ($isCopyTarget -and $item.PSIsContainer -and (Test-SyncedCopy $linkPath)) {
+                Remove-SyncedCopy $linkPath
             } elseif ($item.PSIsContainer) {
-                # Real dir (old copy) -> backup
+                # Real user directory -> backup before replacing it.
                 $backup = "$linkPath.bak.$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
                 Write-Host "  [BACKUP] old copy -> $backup" -ForegroundColor Yellow
                 Move-Item $linkPath $backup
@@ -139,6 +162,15 @@ foreach ($agentDir in $AgentDirs) {
                 $failed++
                 continue
             }
+        }
+
+        # Codex: use a real directory copy because some scanners skip Junctions
+        if ($isCopyTarget) {
+            Copy-Item -LiteralPath $target -Destination $linkPath -Recurse -Force
+            New-Item -ItemType File -Path (Join-Path $linkPath ".skill-sync-copy") -Force | Out-Null
+            Write-Host "  [COPY] $skillName -> $agentDir\$skillName" -ForegroundColor Green
+            $created++
+            continue
         }
 
         # Create Junction

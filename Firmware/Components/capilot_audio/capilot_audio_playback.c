@@ -13,6 +13,7 @@
  */
 
 #include "capilot_audio_playback.h"
+#include "capilot_audio_capture.h"
 #include "capilot_audio_driver.h"
 #include "capilot_audio_internal.h"
 #include "capilot_bsp.h"
@@ -45,16 +46,25 @@ static const char *TAG = "capilot_audio_pb";
 #define ES8311_CLK_MANAGER_REG08    0x08
 #define ES8311_SDPIN_REG09          0x09
 #define ES8311_SDPOUT_REG0A         0x0A
+#define ES8311_SYSTEM_REG0B         0x0B
+#define ES8311_SYSTEM_REG0C         0x0C
 #define ES8311_SYSTEM_REG0D         0x0D
 #define ES8311_SYSTEM_REG0E         0x0E
+#define ES8311_SYSTEM_REG10         0x10
+#define ES8311_SYSTEM_REG11         0x11
 #define ES8311_SYSTEM_REG12         0x12
 #define ES8311_SYSTEM_REG13         0x13
 #define ES8311_SYSTEM_REG14         0x14
+#define ES8311_ADC_REG15            0x15
+#define ES8311_ADC_REG16            0x16
 #define ES8311_ADC_REG17            0x17
+#define ES8311_ADC_REG1B            0x1B
 #define ES8311_ADC_REG1C            0x1C
 #define ES8311_DAC_REG31            0x31
 #define ES8311_DAC_REG32            0x32
 #define ES8311_DAC_REG37            0x37
+#define ES8311_GPIO_REG44           0x44
+#define ES8311_GP_REG45             0x45
 
 /* ============ 时钟系数表（提取自 es8311 组件库） ============ */
 typedef struct {
@@ -153,10 +163,19 @@ static esp_err_t es8311_init_regs(const capilot_audio_config_t *config)
 {
     uint32_t mclk_ratio = 256;
 
-    /* 1. 复位 */
-    ESP_RETURN_ON_ERROR(es8311_write(ES8311_RESET_REG00, 0x1F), TAG, "reset");
-    vTaskDelay(pdMS_TO_TICKS(20));
-    ESP_RETURN_ON_ERROR(es8311_write(ES8311_RESET_REG00, 0x00), TAG, "exit reset");
+    /* 1. 基础上电序列，贴近 Espressif es8311 component open/start flow. */
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_GPIO_REG44, 0x08), TAG, "i2c noise immunity");
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_GPIO_REG44, 0x08), TAG, "i2c noise immunity retry");
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_CLK_MANAGER_REG01, 0x30), TAG, "clk manager reset");
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_CLK_MANAGER_REG02, 0x00), TAG, "clk manager reg02 default");
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_CLK_MANAGER_REG03, 0x10), TAG, "clk manager reg03 default");
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_ADC_REG16, 0x24), TAG, "adc reg16 default");
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_CLK_MANAGER_REG04, 0x10), TAG, "clk manager reg04 default");
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_CLK_MANAGER_REG05, 0x00), TAG, "clk manager reg05 default");
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_SYSTEM_REG0B, 0x00), TAG, "system reg0b default");
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_SYSTEM_REG0C, 0x00), TAG, "system reg0c default");
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_SYSTEM_REG10, 0x1F), TAG, "system reg10 default");
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_SYSTEM_REG11, 0x7F), TAG, "system reg11 default");
     ESP_RETURN_ON_ERROR(es8311_write(ES8311_RESET_REG00, 0x80), TAG, "power on");
 
     /* 2. 使能所有时钟，MCLK 来自 MCLK 引脚 */
@@ -191,6 +210,7 @@ static esp_err_t es8311_init_regs(const capilot_audio_config_t *config)
     ESP_RETURN_ON_ERROR(es8311_write(ES8311_SYSTEM_REG13, 0x10), TAG, "headphone");
 
     /* 11. ADC EQ 旁路 + DC 偏移消除 */
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_ADC_REG1B, 0x0A), TAG, "ADC HPF");
     ESP_RETURN_ON_ERROR(es8311_write(ES8311_ADC_REG1C, 0x6A), TAG, "ADC EQ");
 
     /* 12. DAC EQ 旁路 */
@@ -203,6 +223,12 @@ static esp_err_t es8311_init_regs(const capilot_audio_config_t *config)
     /* 14. 设置音量 */
     uint8_t vol_reg = (s_volume == 0) ? 0x00 : (uint8_t)((s_volume * 256 / 100) - 1);
     ESP_RETURN_ON_ERROR(es8311_write(ES8311_DAC_REG32, vol_reg), TAG, "volume");
+
+    /* 15. 确保 DAC playback path 已经从 power-down/mute 状态释放。 */
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_DAC_REG31, 0x00), TAG, "DAC unmute");
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_ADC_REG15, 0x40), TAG, "ADC ramp");
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_GP_REG45, 0x00), TAG, "GP control");
+    ESP_RETURN_ON_ERROR(es8311_write(ES8311_GPIO_REG44, 0x58), TAG, "DAC reference");
 
     return ESP_OK;
 }
@@ -223,15 +249,16 @@ static esp_err_t es8311_i2s_init(uint32_t sample_rate)
         ESP_RETURN_ON_ERROR(i2s_new_channel(&chan_cfg, &s_tx_chan, NULL), TAG, "new channel");
     }
 
-    /* TX 初始化为 STD 模式，只配置 dout（mclk/bclk/ws 已由 RX 配置） */
+    /* TX 初始化为 STD 模式。共享 full-duplex channel 时，RX 初始化阶段已经把
+     * mclk/bclk/ws/dout/din 全部绑定到同一个 I2S0 GPIO matrix。 */
     i2s_std_config_t std_cfg = {
         .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(sample_rate),
         .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(
             I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
         .gpio_cfg = {
-            .mclk = (s_tx_chan == capilot_audio_get_shared_tx_chan()) ? -1 : ES8311_I2S_MCK_IO,
-            .bclk = (s_tx_chan == capilot_audio_get_shared_tx_chan()) ? -1 : ES8311_I2S_BCK_IO,
-            .ws   = (s_tx_chan == capilot_audio_get_shared_tx_chan()) ? -1 : ES8311_I2S_WS_IO,
+            .mclk = ES8311_I2S_MCK_IO,
+            .bclk = ES8311_I2S_BCK_IO,
+            .ws   = ES8311_I2S_WS_IO,
             .dout = ES8311_I2S_DO_IO,
             .din  = ES8311_I2S_DI_IO,
             .invert_flags = {
@@ -335,7 +362,7 @@ esp_err_t capilot_audio_playback_start(void)
     /* 全双工模式：播放前需保持 RX channel enable，否则 I2S 控制器时钟
      * 会随 RX disable 而停止，导致 TX write 超时 */
     i2s_chan_handle_t rx = capilot_audio_get_shared_rx_chan();
-    if (rx != NULL) {
+    if (rx != NULL && !capilot_audio_capture_is_running()) {
         esp_err_t ret = i2s_channel_enable(rx);
         if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
             ESP_LOGW(TAG, "rx keep-enable: %s", esp_err_to_name(ret));

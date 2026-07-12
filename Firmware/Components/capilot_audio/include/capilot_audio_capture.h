@@ -48,6 +48,9 @@ esp_err_t capilot_audio_capture_start(void);
  */
 esp_err_t capilot_audio_capture_stop(void);
 
+/** Return whether the capture I2S channel is currently enabled. */
+bool capilot_audio_capture_is_running(void);
+
 /**
  * @brief 读取音频数据（非阻塞）
  * @param[out] buffer 输出音频数据缓冲区

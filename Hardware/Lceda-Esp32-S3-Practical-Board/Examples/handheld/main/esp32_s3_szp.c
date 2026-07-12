@@ -1,10 +1,14 @@
 #include <stdio.h>
 #include "esp32_s3_szp.h"
+#include "driver/i2c_master.h"
 
 static const char *TAG = "esp32_s3_szp";
 
 // 全局I2C端口号
 static int i2c_port = BSP_I2C_NUM;
+static i2c_master_bus_handle_t i2c_bus_handle = NULL;
+static i2c_master_dev_handle_t qmi8658_dev_handle = NULL;
+static i2c_master_dev_handle_t pca9557_dev_handle = NULL;
 
 /******************************************************************************/
 /***************************  I2C ↓ *******************************************/
@@ -15,28 +19,21 @@ esp_err_t bsp_i2c_init(void)
     ESP_LOGI(TAG, "Starting I2C bus initialization...");
     
     // 配置I2C总线
-    i2c_config_t i2c_conf = {
-        .mode = I2C_MODE_MASTER,
-        .sda_io_num = BSP_I2C_SDA,
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
-        .scl_io_num = BSP_I2C_SCL,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = BSP_I2C_FREQ_HZ
-    };
-    
     ESP_LOGI(TAG, "I2C config: port=%d, scl=%d, sda=%d, freq=%d", i2c_port, BSP_I2C_SCL, BSP_I2C_SDA, BSP_I2C_FREQ_HZ);
     
     // 配置I2C参数
-    ret = i2c_param_config(i2c_port, &i2c_conf);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to configure I2C: %s", esp_err_to_name(ret));
-        return ret;
-    }
-    
     // 安装I2C驱动
-    ret = i2c_driver_install(i2c_port, i2c_conf.mode, 0, 0, 0);
+    i2c_master_bus_config_t bus_config = {
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .i2c_port = BSP_I2C_NUM,
+        .sda_io_num = BSP_I2C_SDA,
+        .scl_io_num = BSP_I2C_SCL,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,
+    };
+    ret = i2c_new_master_bus(&bus_config, &i2c_bus_handle);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to install I2C driver: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to create I2C bus: %s", esp_err_to_name(ret));
         return ret;
     }
     
@@ -53,7 +50,11 @@ esp_err_t bsp_i2c_init(void)
 // 读取QMI8658寄存器的值
 esp_err_t qmi8658_register_read(uint8_t reg_addr, uint8_t *data, size_t len)
 {
-    esp_err_t ret = i2c_master_write_read_device(i2c_port, QMI8658_SENSOR_ADDR, &reg_addr, 1, data, len, 1000 / portTICK_PERIOD_MS);
+    if (qmi8658_dev_handle == NULL) {
+        i2c_device_config_t cfg = {.device_address = QMI8658_SENSOR_ADDR, .scl_speed_hz = BSP_I2C_FREQ_HZ};
+        ESP_RETURN_ON_ERROR(i2c_master_bus_add_device(i2c_bus_handle, &cfg, &qmi8658_dev_handle), TAG, "QMI8658 device");
+    }
+    esp_err_t ret = i2c_master_transmit_receive(qmi8658_dev_handle, &reg_addr, 1, data, len, 1000 / portTICK_PERIOD_MS);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "QMI8658 read failed: %s", esp_err_to_name(ret));
     }
@@ -64,7 +65,11 @@ esp_err_t qmi8658_register_read(uint8_t reg_addr, uint8_t *data, size_t len)
 esp_err_t qmi8658_register_write_byte(uint8_t reg_addr, uint8_t data)
 {
     uint8_t write_buf[2] = {reg_addr, data};
-    esp_err_t ret = i2c_master_write_to_device(i2c_port, QMI8658_SENSOR_ADDR, write_buf, sizeof(write_buf), 1000 / portTICK_PERIOD_MS);
+    if (qmi8658_dev_handle == NULL) {
+        i2c_device_config_t cfg = {.device_address = QMI8658_SENSOR_ADDR, .scl_speed_hz = BSP_I2C_FREQ_HZ};
+        ESP_RETURN_ON_ERROR(i2c_master_bus_add_device(i2c_bus_handle, &cfg, &qmi8658_dev_handle), TAG, "QMI8658 device");
+    }
+    esp_err_t ret = i2c_master_transmit(qmi8658_dev_handle, write_buf, sizeof(write_buf), 1000 / portTICK_PERIOD_MS);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "QMI8658 write failed: %s", esp_err_to_name(ret));
     }
@@ -186,7 +191,11 @@ uint8_t qmi8658_fetch_motion(void)
 // 读取PCA9557寄存器的值
 esp_err_t pca9557_register_read(uint8_t reg_addr, uint8_t *data, size_t len)
 {
-    esp_err_t ret = i2c_master_write_read_device(i2c_port, PCA9557_SENSOR_ADDR, &reg_addr, 1, data, len, 1000 / portTICK_PERIOD_MS);
+    if (pca9557_dev_handle == NULL) {
+        i2c_device_config_t cfg = {.device_address = PCA9557_SENSOR_ADDR, .scl_speed_hz = BSP_I2C_FREQ_HZ};
+        ESP_RETURN_ON_ERROR(i2c_master_bus_add_device(i2c_bus_handle, &cfg, &pca9557_dev_handle), TAG, "PCA9557 device");
+    }
+    esp_err_t ret = i2c_master_transmit_receive(pca9557_dev_handle, &reg_addr, 1, data, len, 1000 / portTICK_PERIOD_MS);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "PCA9557 read failed: %s", esp_err_to_name(ret));
     }
@@ -197,7 +206,11 @@ esp_err_t pca9557_register_read(uint8_t reg_addr, uint8_t *data, size_t len)
 esp_err_t pca9557_register_write_byte(uint8_t reg_addr, uint8_t data)
 {
     uint8_t write_buf[2] = {reg_addr, data};
-    esp_err_t ret = i2c_master_write_to_device(i2c_port, PCA9557_SENSOR_ADDR, write_buf, sizeof(write_buf), 1000 / portTICK_PERIOD_MS);
+    if (pca9557_dev_handle == NULL) {
+        i2c_device_config_t cfg = {.device_address = PCA9557_SENSOR_ADDR, .scl_speed_hz = BSP_I2C_FREQ_HZ};
+        ESP_RETURN_ON_ERROR(i2c_master_bus_add_device(i2c_bus_handle, &cfg, &pca9557_dev_handle), TAG, "PCA9557 device");
+    }
+    esp_err_t ret = i2c_master_transmit(pca9557_dev_handle, write_buf, sizeof(write_buf), 1000 / portTICK_PERIOD_MS);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "PCA9557 write failed: %s", esp_err_to_name(ret));
     }
@@ -447,7 +460,7 @@ esp_err_t bsp_touch_new(esp_lcd_touch_handle_t *ret_touch)
     tp_io_config.scl_speed_hz = 400000;
     
     ESP_LOGI(TAG, "Creating touch screen I2C IO with port: %d", i2c_port);
-    ESP_RETURN_ON_ERROR(esp_lcd_new_panel_io_i2c((esp_lcd_i2c_bus_handle_t)i2c_port, &tp_io_config, &tp_io_handle), TAG, "");
+    ESP_RETURN_ON_ERROR(esp_lcd_new_panel_io_i2c(i2c_bus_handle, &tp_io_config, &tp_io_handle), TAG, "");
     
     ESP_LOGI(TAG, "Creating FT5x06 touch screen driver");
     ESP_ERROR_CHECK(esp_lcd_touch_new_i2c_ft5x06(tp_io_handle, &tp_cfg, ret_touch));
@@ -789,6 +802,7 @@ esp_codec_dev_handle_t bsp_audio_codec_speaker_init(void)
     audio_codec_i2c_cfg_t i2c_cfg = {
         .port = i2c_port,
         .addr = ES8311_CODEC_DEFAULT_ADDR,
+        .bus_handle = i2c_bus_handle,
     };
     const audio_codec_ctrl_if_t *i2c_ctrl_if = audio_codec_new_i2c_ctrl(&i2c_cfg);
     assert(i2c_ctrl_if);
@@ -839,6 +853,7 @@ esp_codec_dev_handle_t bsp_audio_codec_microphone_init(void)
     audio_codec_i2c_cfg_t i2c_cfg = {
         .port = i2c_port,
         .addr = 0x82,
+        .bus_handle = i2c_bus_handle,
     };
     const audio_codec_ctrl_if_t *i2c_ctrl_if = audio_codec_new_i2c_ctrl(&i2c_cfg);
     assert(i2c_ctrl_if);

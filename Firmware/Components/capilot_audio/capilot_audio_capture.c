@@ -32,6 +32,7 @@ static const char *TAG = "capilot_audio_cap";
 #define ES7210_I2S_BCK_IO       GPIO_NUM_14
 #define ES7210_I2S_WS_IO        GPIO_NUM_13
 #define ES7210_I2S_DI_IO        GPIO_NUM_12
+#define ES8311_I2S_DO_IO        GPIO_NUM_45
 
 /* ============ ES7210 寄存器地址 ============ */
 #define ES7210_RESET_REG00          0x00
@@ -201,7 +202,9 @@ static esp_err_t es7210_i2s_init(uint32_t sample_rate)
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
     ESP_RETURN_ON_ERROR(i2s_new_channel(&chan_cfg, &s_tx_chan, &s_rx_chan), TAG, "new channel");
 
-    /* RX 初始化为 STD 模式，配置共享时钟引脚 + din */
+    /* RX/TX full-duplex shares the same I2S0 STD GPIO matrix.
+     * Configure ES8311 DOUT here as well; otherwise later TX-only init can
+     * succeed in software while the physical data pin is left unbound. */
     i2s_std_config_t std_cfg = {
         .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(sample_rate),
         .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(
@@ -210,7 +213,7 @@ static esp_err_t es7210_i2s_init(uint32_t sample_rate)
             .mclk = ES7210_I2S_MCK_IO,
             .bclk = ES7210_I2S_BCK_IO,
             .ws   = ES7210_I2S_WS_IO,
-            .dout = -1,               /* RX 不需要 dout */
+            .dout = ES8311_I2S_DO_IO,
             .din  = ES7210_I2S_DI_IO,
         },
     };
@@ -343,6 +346,11 @@ esp_err_t capilot_audio_capture_stop(void)
     s_running = false;
     ESP_LOGI(TAG, "audio capture stopped");
     return ESP_OK;
+}
+
+bool capilot_audio_capture_is_running(void)
+{
+    return s_running;
 }
 
 esp_err_t capilot_audio_capture_read(capilot_audio_buffer_t *buffer)

@@ -12,7 +12,17 @@ dependencies:
     - name: lvgl/lvgl
       version: ^8.3
     source:
-      path: B:\CaPilot\firmware\esp32_s3\components\capilot_bsp
+      path: /home/hachi/Project/CaPilot/Firmware/components/capilot_bsp
+      type: local
+    version: '*'
+  capilot_usb_hid_mouse:
+    dependencies:
+    - name: espressif/esp_tinyusb
+      version: ^2.0.0
+    - name: idf
+      version: ^5.0
+    source:
+      path: /home/hachi/Project/CaPilot/Firmware/components/capilot_usb_hid_mouse
       type: local
     version: '*'
   espressif/esp_lcd_touch:
@@ -102,12 +112,13 @@ dependencies:
     version: 8.4.0
 direct_dependencies:
 - capilot_bsp
+- capilot_usb_hid_mouse
 - espressif/esp_lcd_touch
 - espressif/esp_lcd_touch_ft5x06
 - espressif/esp_lvgl_port
 - espressif/esp_tinyusb
 - idf
 - lvgl/lvgl
-manifest_hash: 6cbca8ae3ef0b3823edde9e3e08a13367835c983de0d3977e53395c944b9220a
+manifest_hash: caeb4faf1b3ffe161792918dfeeec0f35b9c4d1500f5ba446f7ad261d67ea7a5
 target: esp32s3
 version: 2.0.0

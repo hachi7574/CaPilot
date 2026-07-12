@@ -1,5 +1,7 @@
 ## IDF Component Manager Manifest File
-## BSP only depends on ESP-IDF built-in components.
-## External deps (touch/LVGL/tinyusb) are declared by each demo project.
 dependencies:
   idf: "^5.0"
+  espressif/esp_lcd_touch: "^1.0"
+  espressif/esp_lcd_touch_ft5x06: "^1.0"
+  espressif/esp_lvgl_port: "^2.0"
+  lvgl/lvgl: "^8.3"

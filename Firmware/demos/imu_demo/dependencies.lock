@@ -3,17 +3,82 @@ dependencies:
     dependencies:
     - name: idf
       version: ^5.0
+    - name: espressif/esp_lcd_touch
+      version: ^1.0
+    - name: espressif/esp_lcd_touch_ft5x06
+      version: ^1.0
+    - name: espressif/esp_lvgl_port
+      version: ^2.0
+    - name: lvgl/lvgl
+      version: ^8.3
     source:
-      path: B:\CaPilot\firmware\esp32_s3\components\capilot_bsp
+      path: /home/hachi/Project/CaPilot/Firmware/components/capilot_bsp
       type: local
     version: '*'
+  capilot_imu:
+    dependencies:
+    - name: idf
+      version: ^5.0
+    - name: capilot_bsp
+      override_path: ../capilot_bsp
+      version: '*'
+    source:
+      path: /home/hachi/Project/CaPilot/Firmware/components/capilot_imu
+      type: local
+    version: '*'
+  espressif/esp_lcd_touch:
+    component_hash: 3f85a7d95af876f1a6ecca8eb90a81614890d0f03a038390804e5a77e2caf862
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=4.4.2'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.2.1
+  espressif/esp_lcd_touch_ft5x06:
+    component_hash: 8ae101b4a321b6327d98751b049e3c7fff2718ad04d676259369ff85d4edbcdf
+    dependencies:
+    - name: espressif/esp_lcd_touch
+      registry_url: https://components.espressif.com
+      require: public
+      version: ^1.2.0
+    - name: idf
+      require: private
+      version: '>=5.2'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.1.0~1
+  espressif/esp_lvgl_port:
+    component_hash: fb6c1fdfe70d4ca39a035d63ca394a35f17ec84ce16ff98ecb13a54155d75da4
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.2'
+    - name: lvgl/lvgl
+      registry_url: https://components.espressif.com
+      require: public
+      version: '>=8,<10'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 2.8.0~1
   idf:
     source:
       type: idf
     version: 5.5.4
+  lvgl/lvgl:
+    component_hash: d7c1ac037ae6e85d94897f807d6e7ba0946a83e720074fc95a4f6241da9f9f53
+    dependencies: []
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 8.4.0
 direct_dependencies:
 - capilot_bsp
+- capilot_imu
 - idf
-manifest_hash: 6ca9e116468755f0cc71939e38675b7649c63b760bd778ea564b05c4c8a56476
+manifest_hash: 2d6094f26571d110fc15519956d5ce1e03bb840726f009b2a5906285a0514ce8
 target: esp32s3
 version: 2.0.0

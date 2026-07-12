@@ -9,15 +9,11 @@ set(_capilot_reqs
     "esp_driver_spi"
     "esp_driver_ledc"
     "esp_lcd"
+    "espressif__esp_lcd_touch"
+    "espressif__esp_lcd_touch_ft5x06"
+    "lvgl__lvgl"
+    "espressif__esp_lvgl_port"
 )
-
-if(CONFIG_CAPILOT_BSP_TOUCH_ENABLE)
-    list(APPEND _capilot_reqs "esp_lcd_touch" "esp_lcd_touch_ft5x06")
-endif()
-
-if(CONFIG_CAPILOT_BSP_LVGL_ENABLE)
-    list(APPEND _capilot_reqs "lvgl" "esp_lvgl_port")
-endif()
 
 idf_component_register(
     SRCS "capilot_bsp.c"

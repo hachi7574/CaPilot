@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CaPilot | 多 Agent 工作流的物理指挥台</title>
+  <meta
+    name="description"
+    content="CaPilot 是面向多 Agent 工作流的桌面硬件交互设备，集成 Agent 管理、触控板、语音和体感交互。"
+  />
+  <style>
+    :root {
+      --bg: #061017;
+      --bg-soft: rgba(13, 29, 40, 0.78);
+      --panel: rgba(9, 22, 31, 0.84);
+      --panel-strong: rgba(10, 26, 37, 0.96);
+      --line: rgba(137, 214, 255, 0.18);
+      --text: #eef7fb;
+      --muted: #92aabc;
+      --cyan: #5fe2ff;
+      --cyan-deep: #0db9df;
+      --amber: #ffc96b;
+      --green: #7dffbc;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 16px;
+      --content: 1180px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(95, 226, 255, 0.16), transparent 28%),
+        radial-gradient(circle at 82% 12%, rgba(255, 201, 107, 0.14), transparent 24%),
+        radial-gradient(circle at 72% 78%, rgba(125, 255, 188, 0.1), transparent 28%),
+        linear-gradient(180deg, #061017 0%, #07131b 40%, #050b10 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(circle at center, black 42%, transparent 92%);
+      pointer-events: none;
+      opacity: 0.42;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .wrap {
+      width: min(calc(100% - 40px), var(--content));
+      margin: 0 auto;
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(18px);
+      background: rgba(4, 13, 19, 0.66);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      min-height: 76px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background:
+        linear-gradient(140deg, rgba(95, 226, 255, 0.32), rgba(13, 185, 223, 0.08)),
+        rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(95, 226, 255, 0.36);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+        0 12px 30px rgba(14, 148, 187, 0.18);
+      display: grid;
+      place-items: center;
+      color: var(--cyan);
+      font-size: 15px;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .nav-links a {
+      padding: 10px 14px;
+      border-radius: 999px;
+      color: var(--muted);
+      transition: 0.25s ease;
+    }
+
+    .nav-links a:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+    }
+
+    .hero {
+      padding: 64px 0 28px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+      gap: 28px;
+      align-items: stretch;
+    }
+
+    .card {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(12, 28, 39, 0.92), rgba(6, 18, 26, 0.9));
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-main {
+      padding: 34px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(95, 226, 255, 0.08);
+      border: 1px solid rgba(95, 226, 255, 0.18);
+      color: var(--cyan);
+      font-size: 13px;
+      letter-spacing: 0.06em;
+    }
+
+    h1 {
+      margin: 22px 0 16px;
+      font-size: clamp(38px, 6vw, 72px);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+    }
+
+    .hero-main p {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.85;
+      color: #d2e1eb;
+      max-width: 760px;
+    }
+
+    .hero-actions {
+      margin-top: 28px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 18px;
+      border-radius: 999px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--cyan), var(--cyan-deep));
+      color: #03202a;
+      box-shadow: 0 14px 36px rgba(13, 185, 223, 0.28);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      color: var(--text);
+    }
+
+    .hero-side {
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .status-panel {
+      padding: 18px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .status-title {
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .agent-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .agent-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 15px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .agent-meta strong,
+    .mode-card strong,
+    .metric strong {
+      display: block;
+      font-size: 15px;
+    }
+
+    .agent-meta span,
+    .mode-card span,
+    .metric span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .badge {
+      white-space: nowrap;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .running {
+      background: rgba(95, 226, 255, 0.11);
+      color: var(--cyan);
+    }
+
+    .waiting {
+      background: rgba(255, 201, 107, 0.13);
+      color: var(--amber);
+    }
+
+    .done {
+      background: rgba(125, 255, 188, 0.12);
+      color: var(--green);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin: 18px 0 0;
+    }
+
+    .metric {
+      padding: 18px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .metric .num {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    section {
+      padding: 28px 0;
+    }
+
+    .section-head {
+      margin-bottom: 20px;
+    }
+
+    .section-head .tag {
+      display: inline-block;
+      margin-bottom: 10px;
+      color: var(--amber);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .section-head h2 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.12;
+      letter-spacing: -0.03em;
+    }
+
+    .section-head p {
+      margin: 0;
+      max-width: 780px;
+      color: var(--muted);
+      line-height: 1.8;
+      font-size: 16px;
+    }
+
+    .problem-grid,
+    .audience-grid,
+    .mode-grid,
+    .value-grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .problem-grid,
+    .audience-grid,
+    .value-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .mode-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .info-card {
+      padding: 24px;
+      border-radius: var(--radius-lg);
+      background: var(--bg-soft);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+
+    .info-card h3 {
+      margin: 0 0 12px;
+      font-size: 21px;
+      letter-spacing: -0.02em;
+    }
+
+    .info-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    .mode-card {
+      padding: 24px;
+      border-radius: var(--radius-lg);
+      background:
+        linear-gradient(180deg, rgba(16, 35, 47, 0.92), rgba(8, 18, 25, 0.94));
+      border: 1px solid rgba(95, 226, 255, 0.12);
+      min-height: 220px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mode-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -30% -20% auto;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(95, 226, 255, 0.18), transparent 66%);
+      pointer-events: none;
+    }
+
+    .mode-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 18px;
+      font-size: 22px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .highlight {
+      margin-top: 28px;
+      padding: 28px;
+      border-radius: var(--radius-xl);
+      background:
+        linear-gradient(135deg, rgba(95, 226, 255, 0.08), rgba(255, 201, 107, 0.07)),
+        rgba(8, 22, 31, 0.96);
+      border: 1px solid rgba(95, 226, 255, 0.12);
+      box-shadow: var(--shadow);
+    }
+
+    .highlight strong {
+      display: block;
+      font-size: clamp(26px, 4vw, 38px);
+      line-height: 1.2;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+    }
+
+    .highlight p {
+      margin: 0;
+      color: #d7e4ec;
+      font-size: 17px;
+      line-height: 1.9;
+    }
+
+    .footer {
+      padding: 28px 0 60px;
+      color: var(--muted);
+    }
+
+    .footer-card {
+      padding: 24px;
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .footer-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .footer-tags span {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      color: #c8d8e3;
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid,
+      .problem-grid,
+      .audience-grid,
+      .mode-grid,
+      .value-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .nav-inner {
+        padding: 12px 0;
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .wrap {
+        width: min(calc(100% - 24px), var(--content));
+      }
+
+      .hero {
+        padding-top: 36px;
+      }
+
+      .hero-main,
+      .hero-side,
+      .info-card,
+      .mode-card,
+      .highlight,
+      .footer-card {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 36px;
+      }
+
+      .hero-main p,
+      .highlight p {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="wrap nav-inner">
+      <div class="brand">
+        <div class="brand-mark">CP</div>
+        <div>CaPilot</div>
+      </div>
+      <div class="nav-links">
+        <a href="#problem">问题</a>
+        <a href="#product">产品</a>
+        <a href="#users">用户</a>
+        <a href="#value">价值</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <article class="card hero-main">
+          <div class="eyebrow">TRAE AI 创造力大赛 · 硬件交互赛道</div>
+          <h1>给多 Agent 工作流<br />配一个真正顺手的物理指挥台</h1>
+          <p>
+            CaPilot 是一块面向多 Agent 场景的桌面小屏外设。它把 Agent 状态感知、触控板、语音输入和体感交互整合进同一台设备，
+            让开发者在不离开主工作区的前提下，查看、切换并指挥多个 AI Agent。
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#product">查看产品形态</a>
+            <a class="btn btn-secondary" href="#value">看它有什么价值</a>
+          </div>
+          <div class="metrics">
+            <div class="metric">
+              <div class="num">80%</div>
+              <strong>管理操作时间下降目标</strong>
+              <span>把切换、查看、下指令从 5~15 秒压到 2 秒以内。</span>
+            </div>
+            <div class="metric">
+              <div class="num">3</div>
+              <strong>核心交互模式</strong>
+              <span>Agent 管理、触控板、语音输入，覆盖高频桌面动作。</span>
+            </div>
+            <div class="metric">
+              <div class="num">10+</div>
+              <strong>目标并行 Agent 规模</strong>
+              <span>让一个人也能更稳地调度多路 AI 工作流。</span>
+            </div>
+          </div>
+        </article>
+
+        <aside class="card hero-side" aria-label="设备状态示意">
+          <div class="status-panel">
+            <div class="status-title">实时 Agent 面板</div>
+            <div class="agent-list">
+              <div class="agent-item">
+                <div class="agent-meta">
+                  <strong>编码 Agent</strong>
+                  <span>正在补全触控板交互逻辑</span>
+                </div>
+                <div class="badge running">运行中</div>
+              </div>
+              <div class="agent-item">
+                <div class="agent-meta">
+                  <strong>测试 Agent</strong>
+                  <span>等待你确认回归范围</span>
+                </div>
+                <div class="badge waiting">待确认</div>
+              </div>
+              <div class="agent-item">
+                <div class="agent-meta">
+                  <strong>文档 Agent</strong>
+                  <span>已输出最新 PRD 摘要</span>
+                </div>
+                <div class="badge done">已完成</div>
+              </div>
+            </div>
+          </div>
+          <div class="status-panel">
+            <div class="status-title">交互入口</div>
+            <div class="agent-list">
+              <div class="agent-item">
+                <div class="agent-meta">
+                  <strong>触控板模式</strong>
+                  <span>屏幕滑动就是鼠标移动与滚轮控制</span>
+                </div>
+              </div>
+              <div class="agent-item">
+                <div class="agent-meta">
+                  <strong>语音模式</strong>
+                  <span>说一句话，转成文字后发送给当前 Agent</span>
+                </div>
+              </div>
+              <div class="agent-item">
+                <div class="agent-meta">
+                  <strong>体感切换</strong>
+                  <span>甩动切窗口，倾斜切桌面，拍击唤醒设备</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="problem">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="tag">Problem</div>
+          <h2>AI 越强，管理多个 Agent 的成本反而越明显</h2>
+          <p>
+            真正卡住多 Agent 工作流的，往往不是模型能力，而是人类的输入输出通道太少。只有一套键盘、鼠标和一块主屏幕时，管理多个并发 Agent 会话很快就会变成新的瓶颈。
+          </p>
+        </div>
+        <div class="problem-grid">
+          <article class="info-card">
+            <h3>切换成本高</h3>
+            <p>每看一个 Agent 都要 Alt+Tab、翻日志、找回上下文。单次消耗不大，但一天累积下来，真正浪费的是连续工作状态。</p>
+          </article>
+          <article class="info-card">
+            <h3>状态不可见</h3>
+            <p>哪个 Agent 正在跑、哪个已完成、哪个在等输入，往往只能靠逐个窗口确认，关键结果很容易被日志洪流淹没。</p>
+          </article>
+          <article class="info-card">
+            <h3>手部动作过多</h3>
+            <p>双手在主键盘和鼠标之间频繁切换，桌面上也很难再摆第二套输入设备，打断感和物理负担都很强。</p>
+          </article>
+          <article class="info-card">
+            <h3>效率上限被卡住</h3>
+            <p>现有工具链限制了一个人能稳定调度的 Agent 数量。AI 能力还在上涨，但个人工作流的交互入口没有升级。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="product">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="tag">Product</div>
+          <h2>CaPilot 是一块专门为多 Agent 工作流设计的桌面硬件</h2>
+          <p>
+            基于 ESP32-S3 开发板的现有硬件能力，CaPilot 采用小屏触控、近场语音和体感动作三种交互手段，把查看状态、切换焦点和发送指令压缩成更顺手的桌面动作。
+          </p>
+        </div>
+        <div class="mode-grid">
+          <article class="mode-card">
+            <div class="mode-icon">◫</div>
+            <strong>Agent 管理模式</strong>
+            <span>集中展示所有 Agent 的运行状态、完成结果和是否需要人工介入，让“看全局”变成一眼动作。</span>
+          </article>
+          <article class="mode-card">
+            <div class="mode-icon">✦</div>
+            <strong>触控板模式</strong>
+            <span>开发者不必去够鼠标，直接在屏幕上滑动、点击、滚动，就能完成高频指针操作。</span>
+          </article>
+          <article class="mode-card">
+            <div class="mode-icon">◉</div>
+            <strong>语音模式</strong>
+            <span>把“给 Agent 下指令”从打字输入，变成说一句话即可完成，适合编码中途的快速派单。</span>
+          </article>
+        </div>
+
+        <div class="highlight">
+          <strong>一句话概括产品形态</strong>
+          <p>
+            一块 USB 即插即用的桌面小屏外设，让开发者双手不离主键盘，也能查看、切换并指挥多个 AI Agent。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="users">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="tag">Users</div>
+          <h2>它服务的是已经进入多 Agent 工作流的人</h2>
+          <p>
+            不是所有用户都会同时开很多 Agent，但一旦进入这种工作方式，管理问题会马上浮现出来。CaPilot 主要面向已经被这类问题困住的人群。
+          </p>
+        </div>
+        <div class="audience-grid">
+          <article class="info-card">
+            <h3>独立开发者</h3>
+            <p>一个人扛多个项目，同时让不同 Agent 负责编码、测试、文档和调研，需要低打断的统一控制入口。</p>
+          </article>
+          <article class="info-card">
+            <h3>多 Agent 调度工程师</h3>
+            <p>同时管理多个任务流，希望随时看到哪一路在忙、哪一路出结果、哪一路需要自己确认。</p>
+          </article>
+          <article class="info-card">
+            <h3>AI 工作流重度用户</h3>
+            <p>使用 Trae Work / Code、自定义 Agent 或多种 AI 工具协同工作，输出分散、切换频繁，最容易遇到管理瓶颈。</p>
+          </article>
+          <article class="info-card">
+            <h3>典型使用场景</h3>
+            <p>一边在 IDE 编码，一边让多个 Agent 分头跑任务。你只需要抬眼确认状态、滑一下替代鼠标、说一句下达指令，而不用跳出主工作区。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="value">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="tag">Value</div>
+          <h2>它的意义不只是更方便，而是抬高 AI 原生工作流的上限</h2>
+          <p>
+            CaPilot 想同时证明两件事：一是多 Agent 管理确实可以被硬件交互重新设计；二是 AI 原生工作方式，可能真的需要一个新的桌面入口。
+          </p>
+        </div>
+        <div class="value-grid">
+          <article class="info-card">
+            <h3>效率价值</h3>
+            <p>把切换、查看、确认、下指令这些动作压缩到更短路径里，目标是将 Agent 管理时间降低约 80%，让人能同时稳定驱动更多 Agent。</p>
+          </article>
+          <article class="info-card">
+            <h3>品类价值</h3>
+            <p>现有外设要么偏宏控制，要么偏纯输入，没有一款是围绕“多 Agent 指挥”设计的。CaPilot 试图填补这块空白。</p>
+          </article>
+        </div>
+
+        <div class="highlight">
+          <strong>CaPilot 想做的，不是再造一个 AI</strong>
+          <p>
+            它想补上的，是 AI 工作流里一直被忽视的那一层交互基础设施：当一个人开始同时指挥多个 Agent 时，他需要的不再只是更强的模型，而是一块真正顺手的物理控制台。
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <div class="footer-card">
+        <div>
+          <strong>CaPilot</strong>
+          <div>多 Agent 工作流的物理指挥台</div>
+        </div>
+        <div class="footer-tags" aria-label="标签">
+          <span>#TRAEAI创造力大赛</span>
+          <span>#硬件交互</span>
+          <span>#CaPilot</span>
+          <span>#多Agent</span>
+          <span>#AI工作流</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
